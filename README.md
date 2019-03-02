@@ -25,7 +25,7 @@ A simple "invaders" game to help practice typing.
     ###########..........###|||  .........#########..|||||||.....|=#####..||   ====
     ###########..........###|||##.........#########..|||||||.....|=#####..||==.====
     --------------------------------------------------------------------------------
-    Level  1     Score:      0   Remaining: 100
+    Level  1     Score:      0   Remaining: 100   Ammo:  250
 
 Type the letters or words as they fall from the screen; you'll get points as they explode.
 They'll start falling faster as you go along. If you manage to get all the invading letters 
@@ -39,3 +39,9 @@ If your city is gone, the game is over.
 Run with any Python interpreter (2.7+). Requires a curses-compatible terminal (most terminals support curses).
 
     python typing.py
+
+You can add the desired starting level as a number on the command line.
+
+# Stop
+
+Hit the **End** or **Esc** key on your keyboard to quit.

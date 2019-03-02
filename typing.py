@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
+import sys
 import time
 import curses
 import random
@@ -99,6 +102,9 @@ class Level:
         self.points = previous_points
         self.invaders = []
         self.invaders_left = 100
+        self.ammo = int(
+            (max(len(w) for w in self.word_list)
+             * self.invaders_left * 2.5))
         self.speed = 10 # number of TICKs per fall
         self.create_new_in = 10
         self.max_x = 10
@@ -127,6 +133,9 @@ class Level:
         return hit
         
     def move(self, c=None):
+        if c:
+            self.ammo -= 1
+
         any_destroyed = False
         for i in self.invaders:
             if i.hit_by(c):
@@ -155,15 +164,22 @@ class Level:
         elif self.invaders_left > 0:
             word = random.choice(self.word_list)
             self.invaders.append(Invader.new(word, self.max_x))
-            self.create_new_in = random.randint(10, 20)
+            e = max(11 - self.n, 1)
+            self.create_new_in = random.randint(e, 20)
+
+        if self.invaders_left == 0:
+            # extra points for remaining ammo
+            self.points += self.ammo * 10
+            self.ammo = 0
         
     def draw(self, scr):
         height, width = scr.getmaxyx()
         self.max_x = width - 1
         self.city_bottom = height - 2
-        while len(self.city) < self.max_x:
+        while len(self.city) <= self.max_x:
             block_char = random.choice('#=|.')
-            block_width = min(random.randint(1, 5), self.max_x - len(self.city))
+            block_width = min(random.randint(1, 5),
+                              self.max_x - len(self.city) + 1)
             block_height = max(block_width - 1, random.randint(1, 5))
             for i in range(block_width):
                 self.city.append(CityColumn(block_char, block_height))
@@ -189,8 +205,8 @@ class Level:
 
         scr.hline(height - 2, 0, '-', width)
         scr.addstr(height - 1, 0,
-                   'Level %2d     Score: %6d   Remaining: %3d' % (
-                       self.n, self.points, self.invaders_left))
+                   'Level %2d     Score: %7d   Remaining: %3d   Ammo: %4d' % (
+                       self.n, self.points, self.invaders_left, self.ammo))
 
     @property
     def complete(self):
@@ -198,7 +214,20 @@ class Level:
 
     @property
     def game_over(self):
-        return self.city and all(c.height == 0 for c in self.city)
+        if not self.city:
+            return False
+
+        if self.invaders_left == 0:
+            return False
+        
+        if all(c.height == 0 for c in self.city):
+            return True
+
+        if self.ammo <= 0:
+            return True
+
+        return False
+
 
 
 GAME_WORDS = [
@@ -260,6 +289,10 @@ GAME_LEVELS = [
 
 LEVEL = None
 
+def load_level(i, points=0):
+    return Level(i, GAME_LEVELS[min(i-1, len(GAME_LEVELS)-1)], points)
+
+
 def draw_screen(scr):
     global LEVEL
     scr.erase()
@@ -268,11 +301,9 @@ def draw_screen(scr):
 
     if LEVEL.complete:
         time.sleep(5)
-        LEVEL = Level(LEVEL.n + 1,
-                      GAME_LEVELS[LEVEL.n],
-                      LEVEL.points)
+        LEVEL = load_level(LEVEL.n + 1, LEVEL.points)
 
-
+        
 def process_input(scr):
     try:
         c = scr.getkey()
@@ -290,14 +321,14 @@ def process_input(scr):
     return True
 
 
-def main(stdscr):
+def main(stdscr, level=1):
     global LEVEL
     curses.curs_set(0)
     stdscr.nodelay(1)
     stdscr.leaveok(1)
     
     running = True
-    LEVEL = Level(1, GAME_LEVELS[0])
+    LEVEL = load_level(level)
     while running:
         draw_screen(stdscr)
         if LEVEL.game_over:
@@ -309,5 +340,11 @@ def main(stdscr):
 
 
 if __name__ == '__main__':
-    curses.wrapper(main)
+    if len(sys.argv) == 2:
+        level = int(sys.argv[1])
+    else:
+        level = 1
+    curses.wrapper(main, level)
+    print("Your best score was", LEVEL.points, "on level", LEVEL.n)
+    print("Good job! Try again another time.")
 
